@@ -11,11 +11,14 @@ except ImportError:
 import sys
 import errno
 import os
-import resource
 from subprocess import PIPE
 import time
 import shlex
 import warnings
+try:
+    import resource
+except ImportError:
+    resource = None
 
 from psutil import Popen, STATUS_ZOMBIE, STATUS_DEAD, NoSuchProcess
 
@@ -238,37 +241,44 @@ class Process(object):
 
         args = self.format_args(sockets_fds=sockets_fds)
 
-        def preexec_fn():
-            streams = [sys.stdin]
+        def get_preexec_fn():
 
-            if self.close_child_stdout:
-                streams.append(sys.stdout)
+            def preexec_fn():
+                streams = [sys.stdin]
 
-            if self.close_child_stderr:
-                streams.append(sys.stderr)
+                if self.close_child_stdout:
+                    streams.append(sys.stdout)
 
-            self._null_streams(streams)
-            os.setsid()
+                if self.close_child_stderr:
+                    streams.append(sys.stderr)
 
-            for limit, value in self.rlimits.items():
-                res = getattr(resource, 'RLIMIT_%s' % limit.upper(), None)
-                if res is None:
-                    raise ValueError('unknown rlimit "%s"' % limit)
-                # TODO(petef): support hard/soft limits
-                resource.setrlimit(res, (value, value))
+                self._null_streams(streams)
+                os.setsid()
 
-            if self.gid:
-                try:
-                    os.setgid(self.gid)
-                except OverflowError:
-                    if not ctypes:
-                        raise
-                    # versions of python < 2.6.2 don't manage unsigned int for
-                    # groups like on osx or fedora
-                    os.setgid(-ctypes.c_int(-self.gid).value)
+                if resource:
+                    for limit, value in self.rlimits.items():
+                        res = getattr(
+                            resource, 'RLIMIT_%s' % limit.upper(), None
+                        )
+                        if res is None:
+                            raise ValueError('unknown rlimit "%s"' % limit)
+                        # TODO(petef): support hard/soft limits
+                        resource.setrlimit(res, (value, value))
 
-            if self.uid:
-                os.setuid(self.uid)
+                if self.gid:
+                    try:
+                        os.setgid(self.gid)
+                    except OverflowError:
+                        if not ctypes:
+                            raise
+                        # versions of python < 2.6.2 don't manage unsigned int
+                        # for groups like on osx or fedora
+                        os.setgid(-ctypes.c_int(-self.gid).value)
+
+                if self.uid:
+                    os.setuid(self.uid)
+
+            return preexec_fn if os.name != 'nt' else None
 
         extra = {}
         if self.pipe_stdout:
@@ -278,7 +288,7 @@ class Process(object):
             extra['stderr'] = PIPE
 
         self._worker = Popen(args, cwd=self.working_dir,
-                             shell=self.shell, preexec_fn=preexec_fn,
+                             shell=self.shell, preexec_fn=get_preexec_fn(),
                              env=self.env, close_fds=not self.use_fds,
                              executable=self.executable, **extra)
 
