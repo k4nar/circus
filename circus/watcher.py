@@ -404,7 +404,8 @@ class Watcher(object):
         if status is None:
             while True:
                 try:
-                    _, status = os.waitpid(pid, os.WNOHANG)
+                    flag = os.WNOHANG if hasattr(os, 'WNOHANG') else 0
+                    _, status = os.waitpid(pid, flag)
                 except OSError as e:
                     if e.errno == errno.EAGAIN:
                         time.sleep(0.001)

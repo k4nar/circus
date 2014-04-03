@@ -594,7 +594,8 @@ class Arbiter(object):
         while True:
             try:
                 # wait for our child (so it's not a zombie)
-                pid, status = os.waitpid(-1, os.WNOHANG)
+                flag = os.WNOHANG if hasattr(os, 'WNOHANG') else 0
+                pid, status = os.waitpid(-1, flag)
                 if not pid:
                     break
 
