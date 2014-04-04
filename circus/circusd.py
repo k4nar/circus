@@ -45,7 +45,11 @@ def daemonize():
         if module.startswith('gevent'):
             raise ValueError('Cannot daemonize if gevent is loaded')
 
-    child_pid = os.fork()
+    try:
+        child_pid = os.fork()
+    except AttributeError:
+        logger.error("Daemonizing is not available on this platform.")
+        return
 
     if child_pid != 0:
         # we're in the parent
