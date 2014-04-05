@@ -288,8 +288,12 @@ class TestCircus(AsyncTestCase):
         os.close(fd)
         wdir = os.path.dirname(__file__)
         args = ['generic.py', callable_path, testfile]
+        # on Windows we don't close the fds because we're redirecting
+        # stdin and stdout
+        use_sockets = os.name == 'nt'
         worker = {'cmd': _CMD, 'args': args, 'working_dir': wdir,
-                  'name': 'test', 'graceful_timeout': 2}
+                  'name': 'test', 'graceful_timeout': 2,
+                  'use_sockets': use_sockets}
         worker.update(kw)
         if not arbiter_kw:
             arbiter_kw = {}

@@ -190,6 +190,11 @@ class Process(object):
         # sockets created before fork, should be let go after.
         self._sockets = []
 
+        if os.name == 'nt':
+            if not self.use_fds and (self.pipe_stderr or self.pipe_stdout):
+                raise ValueError("On Windows, you can't close the fds if "
+                                 "you are redirecting stdout or stderr")
+
         if spawn:
             self.spawn()
 
