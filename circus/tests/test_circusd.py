@@ -66,7 +66,6 @@ class TestCircusd(TestCase):
             os.dup2 = self.dup2
             os.setsid = self.setsid
 
-
         for file in self._files:
             if os.path.exists(file):
                 os.remove(file)

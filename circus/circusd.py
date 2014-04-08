@@ -4,7 +4,7 @@ import os
 try:
     import resource
 except ImportError:
-    resource = None
+    resource = None     # NOQA
 
 from circus import logger
 from circus.arbiter import Arbiter

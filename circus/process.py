@@ -18,7 +18,7 @@ import warnings
 try:
     import resource
 except ImportError:
-    resource = None
+    resource = None     # NOQA
 
 from psutil import Popen, STATUS_ZOMBIE, STATUS_DEAD, NoSuchProcess
 

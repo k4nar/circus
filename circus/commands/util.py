@@ -5,7 +5,7 @@ import warnings
 try:
     import resource
 except ImportError:
-    resource = None
+    resource = None     # NOQA
 
 _HOOKS = ('before_start', 'after_start', 'before_stop', 'after_stop',
           'before_spawn', 'after_spawn', 'before_signal', 'after_signal',
