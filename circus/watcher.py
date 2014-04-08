@@ -227,6 +227,9 @@ class Watcher(object):
             raise ValueError("Cannot have %d processes with a singleton "
                              " watcher" % self.numprocesses)
 
+        if os.name == 'nt' and (self.stdout_stream or self.stderr_stream):
+            raise NotImplementedError("Streams are not supported on Windows.")
+
         self.optnames = (("numprocesses", "warmup_delay", "working_dir",
                           "uid", "gid", "send_hup", "stop_signal",
                           "stop_children", "shell", "shell_args",
