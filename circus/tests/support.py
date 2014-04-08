@@ -82,7 +82,13 @@ def resolve_name(name):
     return ret
 
 
-_CMD = sys.executable
+if os.name == 'nt':
+    # On Windows the \ in the executable path seems to create
+    # some issues (Windows can't find the file). If we replace
+    # them by /, it works.
+    _CMD = sys.executable.replace('\\', '/')
+else:
+    _CMD = sys.executable
 
 
 def get_ioloop():
