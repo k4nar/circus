@@ -7,7 +7,7 @@ except ImportError:
     pass
 import mock
 
-from circus.tests.support import TestCase, skipIf, EasyTestSuite
+from circus.tests.support import TestCase, skipIf, EasyTestSuite, IS_WINDOWS
 from circus.sockets import CircusSocket, CircusSockets
 
 
@@ -55,6 +55,7 @@ class TestSockets(TestCase):
         config = {'name': '', 'proto': 'foo'}
         self.assertRaises(socket.error, CircusSocket.load_from_config, config)
 
+    @skipIf(IS_WINDOWS, "Unix sockets not supported on this platform")
     def test_load_from_config_umask(self):
         fd, sockfile = tempfile.mkstemp()
         os.close(fd)
@@ -67,6 +68,7 @@ class TestSockets(TestCase):
         finally:
             sock.close()
 
+    @skipIf(IS_WINDOWS, "Unix sockets not supported on this platform")
     def test_load_from_config_replace(self):
         fd, sockfile = tempfile.mkstemp()
         os.close(fd)
@@ -86,6 +88,7 @@ class TestSockets(TestCase):
         finally:
             sock.close()
 
+    @skipIf(IS_WINDOWS, "Unix sockets not supported on this platform")
     def test_unix_socket(self):
         fd, sockfile = tempfile.mkstemp()
         os.close(fd)
@@ -100,6 +103,7 @@ class TestSockets(TestCase):
         finally:
             sock.close()
 
+    @skipIf(IS_WINDOWS, "Unix sockets not supported on this platform")
     def test_unix_cleanup(self):
         sockets = CircusSockets()
         fd, sockfile = tempfile.mkstemp()

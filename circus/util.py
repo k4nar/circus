@@ -90,6 +90,8 @@ LOG_DATE_SYSLOG_FMT = r"%b %d %H:%M:%S"
 _SYMBOLS = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
 _all_signals = {}
 
+IS_WINDOWS = os.name == 'nt'
+
 
 def get_working_dir():
     """Returns current path, try to use PWD env first.
@@ -252,7 +254,9 @@ def get_info(process=None, interval=0, with_childs=False):
     raw_cmdline = get_cmdline(process)
 
     try:
-        cmdline = os.path.basename(shlex.split(raw_cmdline[0])[0])
+        cmdline = os.path.basename(
+            shlex.split(raw_cmdline[0], posix=not IS_WINDOWS)[0]
+        )
     except (AccessDenied, IndexError):
         cmdline = "N/A"
 
@@ -1002,8 +1006,3 @@ def check_future_exception_and_log(future):
                 exc_info = future.exc_info()
                 traceback.print_tb(exc_info[2])
             return exception
-
-
-def is_win():
-    """checks if platform is Windows"""
-    return sys.platform == "win32"

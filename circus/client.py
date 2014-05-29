@@ -46,7 +46,7 @@ class AsyncCircusClient(object):
     def stop(self):
         self.stream.stop_on_recv()
         self.socket.disconnect(self.endpoint)
-        self.socket.close()
+        self.stream.close()
 
     def send_message(self, command, **props):
         return self.call(make_message(command, **props))

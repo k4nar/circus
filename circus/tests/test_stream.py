@@ -9,7 +9,7 @@ from circus.py3compat import StringIO
 
 from circus.client import make_message
 from circus.tests.support import TestCircus, async_poll_for, truncate_file
-from circus.tests.support import TestCase, EasyTestSuite, skipIf
+from circus.tests.support import TestCase, EasyTestSuite, skipIf, IS_WINDOWS
 from circus.stream import FileStream, WatchedFileStream
 from circus.stream import TimedRotatingFileStream
 from circus.stream import FancyStdoutStream
@@ -67,7 +67,7 @@ class TestWatcher(TestCircus):
         resp = yield self.cli.call(msg)
         raise tornado.gen.Return(resp)
 
-    @skipIf(os.name == 'nt', "Streams not supported")
+    @skipIf(IS_WINDOWS, "Streams not supported")
     @tornado.testing.gen_test
     def test_file_stream(self):
         yield self._start_arbiter()
@@ -77,7 +77,7 @@ class TestWatcher(TestCircus):
         yield self.stop_arbiter()
         stream.close()
 
-    @skipIf(os.name == 'nt', "Streams not supported")
+    @skipIf(IS_WINDOWS, "Streams not supported")
     @tornado.testing.gen_test
     def test_watched_file_stream(self):
         yield self._start_arbiter()
@@ -87,7 +87,7 @@ class TestWatcher(TestCircus):
         yield self.stop_arbiter()
         stream.close()
 
-    @skipIf(os.name == 'nt', "Streams not supported")
+    @skipIf(IS_WINDOWS, "Streams not supported")
     @tornado.testing.gen_test
     def test_timed_rotating_file_stream(self):
         yield self._start_arbiter()
@@ -105,7 +105,7 @@ class TestWatcher(TestCircus):
         yield self.stop_arbiter()
         stream.close()
 
-    @skipIf(os.name == 'nt', "Streams not supported")
+    @skipIf(IS_WINDOWS, "Streams not supported")
     @tornado.testing.gen_test
     def test_stream(self):
         yield self._start_arbiter()
@@ -299,7 +299,7 @@ class TestWatchedFileStream(TestFileStream):
         return stream
 
     # we can't run this test on Windows due to file locking
-    @skipIf(os.name == 'nt', "On Windows")
+    @skipIf(IS_WINDOWS, "On Windows")
     def test_move_file(self):
         _test_fd, test_filename = tempfile.mkstemp()
         stream = self.get_real_stream(filename=test_filename)

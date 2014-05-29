@@ -8,7 +8,8 @@ from circus import circusd
 from circus.arbiter import Arbiter
 from circus.util import REDIRECT_TO
 from circus import util
-from circus.tests.support import has_gevent, TestCase, skipIf, EasyTestSuite
+from circus.tests.support import (has_gevent, TestCase, skipIf, EasyTestSuite,
+                                  IS_WINDOWS)
 
 
 CIRCUS_INI = os.path.join(os.path.dirname(__file__), 'config', 'circus.ini')
@@ -25,7 +26,7 @@ class TestCircusd(TestCase):
         sys.exit = lambda x: None
         self._files = []
 
-        if os.name != 'nt':
+        if not IS_WINDOWS:
             self.fork = os.fork
             os.fork = self._forking
             self.setsid = os.setsid
@@ -61,7 +62,7 @@ class TestCircusd(TestCase):
         Arbiter.start = self.starter
         sys.exit = self.exit
 
-        if os.name != 'nt':
+        if not IS_WINDOWS:
             os.fork = self.fork
             os.dup2 = self.dup2
             os.setsid = self.setsid
@@ -95,7 +96,7 @@ class TestCircusd(TestCase):
         self.assertTrue(isinstance(max, int))
 
     @skipIf(has_gevent(), "Gevent is loaded")
-    @skipIf(os.name == 'nt', "On Windows")
+    @skipIf(IS_WINDOWS, "Daemonizing not supported on Windows")
     def test_daemonize(self):
         daemonize()
         self.assertEqual(self.forked, 2)

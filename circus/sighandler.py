@@ -1,15 +1,15 @@
-import os
 import signal
 import traceback
 import sys
 
 from circus import logger
 from circus.client import make_json
+from circus.util import IS_WINDOWS
 
 
 class SysHandler(object):
 
-    _SIGNALS_NAMES = ("ILL ABRT BREAK INT TERM" if os.name == 'nt' else
+    _SIGNALS_NAMES = ("ILL ABRT BREAK INT TERM" if IS_WINDOWS else
                       "HUP QUIT INT TERM WINCH")
 
     SIGNALS = [getattr(signal, "SIG%s" % x) for x in _SIGNALS_NAMES.split()]
@@ -61,10 +61,17 @@ class SysHandler(object):
                 sys.exit(1)
 
     def quit(self):
-        self.controller.dispatch((None, make_json("quit")))
+        # We need to transfer the control to the loop's thread
+        self.controller.loop.add_callback_from_signal(
+            self.controller.dispatch, (None, make_json("quit"))
+        )
 
     def reload(self):
-        self.controller.dispatch((None, make_json("reload", graceful=True)))
+        # We need to transfer the control to the loop's thread
+        self.controller.loop.add_callback_from_signal(
+            self.controller.dispatch,
+            (None, make_json("reload", graceful=True))
+        )
 
     def handle_int(self):
         self.quit()

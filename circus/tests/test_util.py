@@ -15,7 +15,8 @@ import psutil
 from psutil import Popen
 import mock
 
-from circus.tests.support import TestCase, EasyTestSuite, skipIf
+from circus.tests.support import (TestCase, EasyTestSuite, skipIf,
+                                  IS_WINDOWS, SLEEP)
 
 from circus import util
 from circus.util import (
@@ -36,7 +37,7 @@ class TestUtil(TestCase):
                 shutil.rmtree(dir)
 
     def test_get_info(self):
-        worker = Popen(["python", "-c", "'import time;time.sleep(5)'"])
+        worker = Popen(["python", "-c", SLEEP % 5])
         try:
             info = get_info(worker)
         finally:
@@ -44,7 +45,7 @@ class TestUtil(TestCase):
 
         self.assertTrue(isinstance(info['pid'], int))
 
-        if os.name == 'nt':
+        if IS_WINDOWS:
             self.assertEqual(info['nice'], psutil.NORMAL_PRIORITY_CLASS)
         else:
             self.assertEqual(info['nice'], 0)

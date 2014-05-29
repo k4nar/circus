@@ -32,6 +32,7 @@ import tornado
 from circus import get_arbiter
 from circus.util import DEFAULT_ENDPOINT_DEALER, DEFAULT_ENDPOINT_SUB
 from circus.util import tornado_sleep, ConflictError
+from circus.util import IS_WINDOWS
 from circus.client import AsyncCircusClient, make_message
 
 ioloop.install()
@@ -82,13 +83,12 @@ def resolve_name(name):
     return ret
 
 
-if os.name == 'nt':
-    # On Windows the \ in the executable path seems to create
-    # some issues (Windows can't find the file). If we replace
-    # them by /, it works.
-    _CMD = sys.executable.replace('\\', '/')
-else:
-    _CMD = sys.executable
+PYTHON = sys.executable
+
+# Script used to sleep for a specified amount of seconds.
+# Should be used instead of the 'sleep' command for
+# compatibility
+SLEEP = PYTHON + " -c 'import time;time.sleep(%d)'"
 
 
 def get_ioloop():
@@ -232,7 +232,7 @@ class TestCircus(AsyncTestCase):
         return plugin
 
     @tornado.gen.coroutine
-    def start_arbiter(self, cmd='circus.tests.support.run_process',
+    def start_arbiter(self, cmd='support.run_process',
                       stdout_stream=None, debug=True, **kw):
         testfile, arbiter = self._create_circus(
             cmd, stdout_stream=stdout_stream,
@@ -285,17 +285,13 @@ class TestCircus(AsyncTestCase):
     @classmethod
     def _create_circus(cls, callable_path, plugins=None, stats=False,
                        async=False, arbiter_kw=None, **kw):
-        resolve_name(callable_path)   # used to check the callable
         fd, testfile = mkstemp()
         os.close(fd)
-        wdir = os.path.dirname(__file__)
-        args = ['generic.py', callable_path, testfile]
-        # on Windows we don't close the fds because we're redirecting
-        # stdin and stdout
-        use_sockets = os.name == 'nt'
-        worker = {'cmd': _CMD, 'args': args, 'working_dir': wdir,
+        wdir = os.getcwd()
+        args = ['circus/tests/generic.py', callable_path, testfile]
+        worker = {'cmd': PYTHON, 'args': args, 'working_dir': wdir,
                   'name': 'test', 'graceful_timeout': 2,
-                  'use_sockets': use_sockets}
+                  'copy_env': True}
         worker.update(kw)
         if not arbiter_kw:
             arbiter_kw = {}
@@ -361,11 +357,20 @@ class Process(object):
 
     def __init__(self, testfile):
         self.testfile = testfile
+
         # init signal handling
-        signal.signal(signal.SIGQUIT, self.handle_quit)
-        signal.signal(signal.SIGTERM, self.handle_quit)
-        signal.signal(signal.SIGINT, self.handle_quit)
-        signal.signal(signal.SIGCHLD, self.handle_chld)
+        if IS_WINDOWS:
+            signal.signal(signal.SIGABRT, self.handle_quit)
+            signal.signal(signal.SIGTERM, self.handle_quit)
+            signal.signal(signal.SIGINT, self.handle_quit)
+            signal.signal(signal.SIGILL, self.handle_quit)
+            signal.signal(signal.SIGBREAK, self.handle_quit)
+        else:
+            signal.signal(signal.SIGQUIT, self.handle_quit)
+            signal.signal(signal.SIGTERM, self.handle_quit)
+            signal.signal(signal.SIGINT, self.handle_quit)
+            signal.signal(signal.SIGCHLD, self.handle_chld)
+
         self.alive = True
 
     def _write(self, msg):

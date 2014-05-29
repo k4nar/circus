@@ -24,10 +24,16 @@ from circus.process import RUNNING, UNEXISTING
 from circus.stream import QueueStream
 from circus.tests.support import TestCircus, truncate_file
 from circus.tests.support import async_poll_for, EasyTestSuite
-from circus.tests.support import MagicMockFuture, skipIf
+from circus.tests.support import MagicMockFuture, skipIf, IS_WINDOWS
+from circus.tests.support import PYTHON
 from circus.util import get_python_version, tornado_sleep
 from circus.watcher import Watcher
 from circus.py3compat import s
+
+if hasattr(signal, 'SIGKILL'):
+    SIGKILL = signal.SIGKILL
+else:
+    SIGKILL = signal.SIGTERM
 
 warnings.filterwarnings('ignore',
                         module='threading', message='sys.exc_clear')
@@ -52,6 +58,9 @@ class FakeProcess(object):
         return True
 
     def stop(self):
+        pass
+
+    def wait(self, *args, **kwargs):
         pass
 
 
@@ -84,7 +93,7 @@ class TestWatcher(TestCircus):
         self.assertEqual(len(pids), 2)
         to_kill = pids[0]
         status = yield self.status('signal', name='test', pid=to_kill,
-                                   signum=signal.SIGKILL)
+                                   signum=SIGKILL)
         self.assertEqual(status, 'ok')
 
         # make sure the process is restarted
@@ -112,20 +121,11 @@ class TestWatcher(TestCircus):
         for process in list(watcher.processes.values()):
             to_kill.append(process.pid)
             # the process is killed in an unsual way
-            try:
-                # use SIGKILL instead of SIGSEGV so we don't get
-                # 'app crashed' dialogs on OS X
-                os.kill(process.pid, signal.SIGKILL)
-            except OSError:
-                pass
-
+            process.stop()
             # and wait for it to die
-            try:
-                os.waitpid(process.pid, 0)
-            except OSError:
-                pass
+            process.wait(3)
 
-            # ansure the old process is considered "unexisting"
+            # ensure the old process is considered "unexisting"
             self.assertEqual(process.status, UNEXISTING)
 
         # this should clean up and create a new process
@@ -155,7 +155,7 @@ class TestWatcher(TestCircus):
         watchers = resp.get('infos')['test']
 
         self.assertEqual(watchers[list(watchers.keys())[0]]['cmdline'].lower(),
-                         sys.executable.split(os.sep)[-1].lower())
+                         PYTHON.split(os.sep)[-1].lower())
         yield self.stop_arbiter()
 
     @tornado.testing.gen_test
@@ -227,7 +227,7 @@ class TestWatcherInitialization(TestCircus):
         finally:
             os.environ = old_environ
 
-    @skipIf(os.name == 'nt', "Streams not supported")
+    @skipIf(IS_WINDOWS, "Streams not supported")
     @tornado.testing.gen_test
     def test_copy_path(self):
         watcher = SomeWatcher(stream=True)
@@ -252,6 +252,7 @@ class TestWatcherInitialization(TestCircus):
         self.assertTrue(resp)
         yield watcher.stop()
 
+    @skipIf(IS_WINDOWS, "virtualenv not supported yet on Windows")
     @tornado.testing.gen_test
     def test_venv(self):
         venv = os.path.join(os.path.dirname(__file__), 'venv')
@@ -269,6 +270,7 @@ class TestWatcherInitialization(TestCircus):
             yield watcher.stop()
         self.assertTrue(wanted in ppath)
 
+    @skipIf(IS_WINDOWS, "virtualenv not supported yet on Windows")
     @tornado.testing.gen_test
     def test_venv_site_packages(self):
         venv = os.path.join(os.path.dirname(__file__), 'venv')
@@ -316,7 +318,7 @@ class SomeWatcher(object):
             os.environ = {'COCONUTS': 'MIGRATE'}
             cmd = ('%s -c "import sys; '
                    'sys.stdout.write(\':\'.join(sys.path)); '
-                   ' sys.stdout.flush()"') % sys.executable
+                   ' sys.stdout.flush()"') % PYTHON
 
             self.watcher = Watcher('xx', cmd, copy_env=True, copy_path=True,
                                    stdout_stream=qstream, loop=self.loop,
@@ -483,7 +485,7 @@ class TestWatcherHooks(TestCircus):
     def _hook_signal_kwargs_test_function(self, kwargs):
         self.assertTrue("pid" not in kwargs)
         self.assertTrue("signum" not in kwargs)
-        self.assertTrue(kwargs["pid"] in (signal.SIGTERM, signal.SIGKILL))
+        self.assertTrue(kwargs["pid"] in (signal.SIGTERM, SIGKILL))
         self.assertTrue(int(kwargs["signum"]) > 1)
 
     @tornado.testing.gen_test
