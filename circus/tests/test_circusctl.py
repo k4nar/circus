@@ -162,4 +162,5 @@ class CLITest(TestCircus):
         # first two lines are VERSION and prompt, followed by a blank line
         self.assertEqual(prompt[3], "Documented commands (type help <topic>):")
 
-test_suite = EasyTestSuite(__name__)
+if __name__ == '__main__':
+    test_suite = EasyTestSuite(__name__)
